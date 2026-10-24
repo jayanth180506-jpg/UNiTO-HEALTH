@@ -1,0 +1,124 @@
+
+#include <Wire.h>
+#include <Adafruit_GFX.h>
+#include <Adafruit_SSD1306.h>
+#include <OneWire.h>
+#include <DallasTemperature.h>
+
+// OLED settings
+#define SCREEN_WIDTH 128
+#define SCREEN_HEIGHT 64
+#define OLED_RESET -1
+#define OLED_ADDRESS 0x3C
+
+Adafruit_SSD1306 display(
+  SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET
+);
+
+// DS18B20 temperature sensor
+#define ONE_WIRE_BUS 4
+OneWire oneWire(ONE_WIRE_BUS);
+DallasTemperature sensors(&oneWire);
+
+// Buzzer
+#define BUZZER_PIN 25
+
+// Simulated patient readings
+int heartRate = 75;
+int spo2 = 98;
+
+void setup() {
+  Serial.begin(115200);
+
+  pinMode(BUZZER_PIN, OUTPUT);
+  digitalWrite(BUZZER_PIN, LOW);
+
+  Wire.begin(21, 22);
+  sensors.begin();
+
+  if (!display.begin(
+        SSD1306_SWITCHCAPVCC, OLED_ADDRESS)) {
+    Serial.println("OLED not detected!");
+    while (true) {
+      delay(100);
+    }
+  }
+
+  display.clearDisplay();
+  display.setTextColor(SSD1306_WHITE);
+  display.setTextSize(1);
+  display.setCursor(0, 0);
+  display.println("UNiTO HEALTH");
+  display.println("Patient Monitor");
+  display.println("Starting...");
+  display.display();
+
+  delay(1500);
+}
+
+void loop() {
+  sensors.requestTemperatures();
+  float temperature = sensors.getTempCByIndex(0);
+
+  // Demonstration values only, not real measurements
+  heartRate = 75;
+  spo2 = 98;
+
+  bool sensorError =
+      (temperature == DEVICE_DISCONNECTED_C);
+
+  // Demonstration alert thresholds only
+  bool alert = sensorError ||
+               temperature > 38.0 ||
+               heartRate > 100 ||
+               heartRate < 60 ||
+               spo2 < 95;
+
+  display.clearDisplay();
+  display.setCursor(0, 0);
+
+  display.println("UNiTO HEALTH");
+  display.println("----------------");
+
+  display.print("Temp: ");
+  if (sensorError) {
+    display.println("Sensor error");
+  } else {
+    display.print(temperature, 1);
+    display.println(" C");
+  }
+
+  display.print("Heart Rate: ");
+  display.print(heartRate);
+  display.println(" bpm*");
+
+  display.print("SpO2: ");
+  display.print(spo2);
+  display.println(" %*");
+
+  display.println("----------------");
+  if (alert) {
+    display.println("DEMO ALERT!");
+  } else {
+    display.println("Status: NORMAL*");
+  }
+
+  display.display();
+
+  if (alert) {
+    tone(BUZZER_PIN, 2000);
+  } else {
+    noTone(BUZZER_PIN);
+  }
+
+  Serial.print("Temperature: ");
+  Serial.println(temperature);
+
+  Serial.print("Heart rate (simulated): ");
+  Serial.println(heartRate);
+
+  Serial.print("SpO2 (simulated): ");
+  Serial.println(spo2);
+
+  delay(2000);
+}
